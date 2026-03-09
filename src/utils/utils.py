@@ -49,6 +49,12 @@ def normalize(predicted_val, actual_val):
     return 1 if relative_var < e else 0
     
 
+def re(predicted_val, actual_val):
+    if actual_val != None and predicted_val != None:
+        return round(abs(actual_val - predicted_val) / abs(actual_val), 3)
+    return None
+
+
 def eval(
         model: str, 
         df: DataFrame, 
@@ -72,6 +78,7 @@ def eval(
             "ground_truth": gr_truth_val,
             "score": normalize(val, gr_truth_val),
             "latency": end - start,
+            "re": re(val, gr_truth_val),
         })
     return DataFrame(results)
 
@@ -97,6 +104,7 @@ def eval_generic(
             "ground_truth": gr_truth_val,
             "score": normalize(val, gr_truth_val),
             "latency": end - start,
+            "re": re(val, gr_truth_val),
         })
     return DataFrame(results)
 

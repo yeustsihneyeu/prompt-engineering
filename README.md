@@ -1,83 +1,95 @@
-# LLM Model Evaluation Report
-
-**Comparative Analysis: Latency, Quality, Efficiency**
-
----
-
-## 1. Introduction
-
-Three open-source models — **llama3.2**, **gemma2**, and **qwen2.5** — were tested with three prompting strategies: **zero-shot**, **few-shot**, and **chain-of-thought (CoT)**.
-
-For each combination, the following metrics were measured:
-- **Latency** — response time in seconds
-- **Score** — extraction accuracy (0 to 1, higher is better)
-- **is_valid_json** — whether the output was valid JSON
-
-All models returned valid JSON in every mode.
+# LLM Benchmark Report
+## Models: llama3.2 · gemma2 · qwen2.5
 
 ---
 
-## 2. Latency
+## Overview
 
-Average response time (in seconds) by model and strategy:
+This report evaluates three open-weight language models across five prompting strategies:
+**zero-shot**, **few-shot**, **chain-of-thought (CoT)**, **self-consistency**, and **PAL** (Program-Aided Language models).
 
-| Model    | Zero-shot | Few-shot | CoT   |
-|----------|-----------|----------|-------|
-| llama3.2 | 0.738     | 1.438    | 0.739 |
-| gemma2   | 2.139     | 4.048    | 2.081 |
-| qwen2.5  | 1.629     | 3.318    | 1.618 |
+Four metrics are measured:
+- **Latency** — average generation time (seconds)
+- **MRE** — Mean Relative Error on numeric outputs
+- **Tolerant Accuracy** — fraction of answers correct within a tolerance threshold
+- **Valid JSON** — fraction of outputs that parse as valid JSON
 
-Key observations:
-
-- **llama3.2** is the fastest model in all modes (0.74–1.44 s).
-- **gemma2** is the slowest, especially in few-shot (4.05 s).
-- Few-shot makes all models about **twice as slow**.
-- Zero-shot and CoT give similar latency results.
+> `nan` indicates the configuration was not evaluated or failed entirely.
 
 ---
 
-## 3. Quality (Score)
+## 1. Latency (seconds, lower is better)
 
-Extraction accuracy (0 to 1, higher is better):
+| Model    | zero_shot | few_shot | cot     | self_consistency | pal     |
+|:---------|----------:|---------:|--------:|-----------------:|--------:|
+| llama3.2 | 0.75      | 1.44     | 0.74    | 1.39             | 5.24    |
+| gemma2   | 2.17      | 4.06     | 2.08    | 4.04             | 13.03   |
+| qwen2.5  | 1.64      | 3.31     | 1.62    | 2.96             | 10.43   |
 
-| Model    | Zero-shot | Few-shot | CoT   |
-|----------|-----------|----------|-------|
-| llama3.2 | 0.479     | 0.120    | 0.470 |
-| gemma2   | 0.746     | 0.900    | 0.842 |
-| qwen2.5  | 0.810     | 0.823    | 0.807 |
-
-Key observations:
-
-- **qwen2.5** shows the most stable results: 0.807–0.823 across all modes.
-- **gemma2** performs best in few-shot (0.900) and CoT (0.842).
-- **llama3.2** drops significantly in few-shot (0.120) — this is an unusual result.
-- Best single result: **gemma2 + few-shot = 0.900**.
+**Key observations:**
+- **llama3.2** is the fastest model across all strategies by a wide margin — roughly 3× faster than gemma2 and 2× faster than qwen2.5 in zero-shot.
+- **PAL** is the most expensive strategy for all models, with gemma2 reaching 13s per generation.
+- Zero-shot and CoT have nearly identical latency, suggesting CoT adds minimal overhead.
+- Self-consistency roughly doubles latency compared to single-sample strategies, as expected (multiple samples).
 
 ---
 
-## 4. Efficiency (Score / Latency)
+## 2. MRE — Mean Relative Error (lower is better)
 
-This shows how much "quality" you get per second of waiting:
+| Model    | zero_shot | few_shot | cot    | self_consistency | pal    |
+|:---------|----------:|---------:|-------:|-----------------:|-------:|
+| llama3.2 | 18.81     | 6.54     | 12.50  | 12.50            | —      |
+| gemma2   | 0.24      | 0.22     | 0.24   | 0.24             | 0.35   |
+| qwen2.5  | 0.15      | 0.49     | 0.16   | 0.16             | 67.19  |
 
-| Model    | Zero-shot | Few-shot | CoT   |
-|----------|-----------|----------|-------|
-| llama3.2 | 0.648     | 0.083    | 0.636 |
-| gemma2   | 0.349     | 0.222    | 0.405 |
-| qwen2.5  | 0.497     | 0.248    | 0.499 |
-
-**qwen2.5** in zero-shot and CoT offers the best balance of speed and quality. **llama3.2** has high efficiency in zero-shot, but mainly because it is fast — its quality is not very good.
+**Key observations:**
+- **llama3.2** has drastically high MRE in zero-shot (18.8) and fails PAL entirely (`nan`) — it struggles with precise numeric reasoning.
+- **gemma2** is the most numerically stable model, maintaining MRE < 0.36 across all strategies.
+- **qwen2.5** has excellent MRE in zero-shot/CoT (~0.15–0.16), but PAL completely breaks down (MRE = 67.2), suggesting poor code execution reliability.
+- Few-shot noticeably reduces llama3.2's error (18.8 → 6.5), showing it benefits from examples.
 
 ---
 
-## 5. Conclusions and Recommendations
+## 3. Tolerant Accuracy (higher is better, max = 1.0)
 
-| Goal | Best choice |
-|------|-------------|
-| Best quality | **gemma2 (few-shot)** — score 0.900, but latency 4.05 s |
-| Best balance | **qwen2.5 (zero-shot / CoT)** — score ~0.808, latency ~1.62 s |
-| Fastest | **llama3.2 (zero-shot)** — 0.74 s, but score only 0.479 |
-| Avoid | **llama3.2 + few-shot** — score 0.120, needs more investigation |
+| Model    | zero_shot | few_shot | cot    | self_consistency | pal    |
+|:---------|----------:|---------:|-------:|-----------------:|-------:|
+| llama3.2 | 0.479     | 0.120    | 0.470  | 0.470            | —      |
+| gemma2   | 0.746     | 0.900    | 0.842  | 0.842            | 0.617  |
+| qwen2.5  | 0.810     | 0.823    | 0.807  | 0.804            | 0.705  |
 
-**Recommendation:** For production use, **qwen2.5 in zero-shot mode** is the best option — it gives stable quality with acceptable speed. If quality is the most important factor and slower responses are acceptable, use **gemma2 + few-shot**. Do not use **llama3.2 with few-shot** — the results are too unreliable.
+**Key observations:**
+- **gemma2 with few-shot** achieves the highest accuracy overall (0.900) — few-shot examples have the strongest positive effect on this model.
+- **qwen2.5** is the most consistent model, hovering around 0.80–0.82 regardless of strategy.
+- **llama3.2** drops sharply with few-shot (0.479 → 0.120), a counterintuitive degradation that may indicate prompt sensitivity or format mismatch.
+- PAL underperforms relative to simpler strategies for both gemma2 and qwen2.5, and is unavailable for llama3.2.
 
-> All models returned valid JSON in all modes (is_valid_json = 1.0).
+---
+
+## 4. Valid JSON Output Rate (higher is better, max = 1.0)
+
+| Model    | zero_shot | few_shot | cot  | self_consistency | pal    |
+|:---------|----------:|---------:|-----:|-----------------:|-------:|
+| llama3.2 | 1.000     | 1.000    | 1.000| 1.000            | 0.000  |
+| gemma2   | 1.000     | 1.000    | 1.000| 1.000            | 0.983  |
+| qwen2.5  | 1.000     | 1.000    | 1.000| 1.000            | 0.957  |
+
+**Key observations:**
+- All three models produce perfectly valid JSON across zero-shot, few-shot, CoT, and self-consistency — output formatting is reliable for these strategies.
+- **PAL is the outlier**: llama3.2 produces 0% valid JSON under PAL, while gemma2 and qwen2.5 maintain >95%.
+- This confirms that llama3.2's PAL failures are total — both in accuracy and output format.
+
+---
+
+## Summary & Recommendations
+
+| Model    | Best Strategy     | Strengths                              | Weaknesses                            |
+|:---------|:------------------|:---------------------------------------|:--------------------------------------|
+| llama3.2 | CoT / zero-shot   | Fastest latency by far                 | Poor numeric accuracy; PAL unusable   |
+| gemma2   | Few-shot          | Stable MRE; best accuracy with examples | Slowest model; PAL degrades JSON slightly |
+| qwen2.5  | Zero-shot / CoT   | Best balance of speed and accuracy     | PAL MRE catastrophically high         |
+
+**Overall recommendation:**
+- For **speed-sensitive** applications: use **llama3.2** with CoT or zero-shot, accepting lower accuracy.
+- For **accuracy-critical** applications: use **gemma2 with few-shot** or **qwen2.5 with zero-shot/CoT**.
+- **Avoid PAL** for llama3.2 entirely; use with caution for qwen2.5 (numeric instability).
